@@ -2,8 +2,8 @@ import User from "../models/Usermodel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const generateToken = (payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 };
@@ -11,8 +11,9 @@ const generateToken = (payload) => {
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || !email || !password)
+    if (!name || !email || !password) {
       return res.status(400).json({ msg: "Please provide all fields" });
+    }
 
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ msg: "User already exists" });
@@ -23,7 +24,8 @@ export const signup = async (req, res) => {
     user = new User({ name, email, password: hashed });
     await user.save();
 
-    const token = generateToken({ id: user._id });
+    const token = generateToken(user._id);
+
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email },
@@ -37,8 +39,9 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
+    if (!email || !password) {
       return res.status(400).json({ msg: "Please provide email and password" });
+    }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
@@ -46,7 +49,8 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-    const token = generateToken({ id: user._id });
+    const token = generateToken(user._id);
+
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email },
